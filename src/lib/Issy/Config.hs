@@ -8,9 +8,15 @@
 ---------------------------------------------------------------------------------------------------
 module Issy.Config
   ( Config(..)
+  , Solver(..)
   , defaultConfig
   , setName
   ) where
+
+---------------------------------------------------------------------------------------------------
+-- | 'Solver' represents the available SMT solvers
+data Solver = Z3 | CVC5
+  deriving (Eq, Show)
 
 ---------------------------------------------------------------------------------------------------
 -- | 'Config' is the data type for the different configuration options of Issy
@@ -60,9 +66,13 @@ data Config = Config
   -- ^ DOCUMENT
     --
     -- External tools
-    --  
+    --
+  , solver :: Solver
+  -- ^ 'solver' specifies which SMT solver to use (Z3 or CVC5)
   , z3cmd :: String
-  -- ^ DOCUMENT
+  -- ^ 'z3cmd' is the command to invoke Z3
+  , cvc5cmd :: String
+  -- ^ 'cvc5cmd' is the command to invoke CVC5
   , ltl2tgba :: String
   -- ^ DOCUMENT
   , muvalScript :: String
@@ -106,7 +116,9 @@ defaultConfig =
     -- Synthesis
     , generateProgram = False
     -- External tools
+    , solver = Z3
     , z3cmd = "z3"
+    , cvc5cmd = "cvc5"
     , ltl2tgba = "ltl2tgba"
     , muvalScript = "call-muval.sh"
     , chcMaxScript = "call-maxsat.sh"

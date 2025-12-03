@@ -11,6 +11,7 @@ import System.Exit (die, exitSuccess)
 
 import Compiler
 import Issy
+import Issy.Config (Solver(..))
 
 data Mode
   = Compile
@@ -236,7 +237,11 @@ configParser = go defaultConfig
         -- Synthesis
         "--synt":sr -> go (cfg {generateProgram = True}) sr
         -- External tools
+        "--solver":"z3":ar -> go (cfg {solver = Z3}) ar
+        "--solver":"cvc5":ar -> go (cfg {solver = CVC5}) ar
+        "--solver":arg:_ -> Left $ "unknown solver: " ++ arg ++ " (use z3 or cvc5)"
         "--caller-z3":arg:ar -> go (cfg {z3cmd = arg}) ar
+        "--caller-cvc5":arg:ar -> go (cfg {cvc5cmd = arg}) ar
         "--caller-aut":arg:ar -> go (cfg {ltl2tgba = arg}) ar
         "--caller-muval":arg:ar -> go (cfg {muvalScript = arg}) ar
         "--caller-chcmx":arg:ar -> go (cfg {chcMaxScript = arg}) ar
@@ -318,13 +323,19 @@ help =
   , " Synthesis:"
   , "   --synt         : generate program if spec is realizable (default: disabled)"
   , ""
+  , " SMT Solver:"
+  , "   --solver z3|cvc5   : SMT solver to use (default: z3)"
+  , ""
   , " External tools:"
   , "   When some of these tools are needed depends on the other options. Note that"
   , "   they are NEVER needed for COMPILATION ONLY with --compile"
   , ""
   , "   --caller-z3 CMD    : path or command for z3"
-  , "                          needed : always"
+  , "                          needed : when using z3 solver"
   , "                          default: 'z3'"
+  , "   --caller-cvc5 CMD  : path or command for cvc5"
+  , "                          needed : when using cvc5 solver"
+  , "                          default: 'cvc5'"
   , "   --caller-aut CMD   : path or command for Spot's ltl2tgba"
   , "                          needed : if temporal formula appear in the specification"
   , "                          default: 'ltl2tgba'"

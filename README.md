@@ -42,7 +42,9 @@ To build Issy, just run
 ```
 in the top-level folder. Stack will get the respective source code libraries and the compiler, so you need internet access for that. The ``issy`` binary is placed in the project's top-level folder. To get a clean build, run ``make clean``.
 
-To run Issy, you also **must** get [Z3](https://github.com/Z3Prover/z3) with **version 4.13.0 or newer**. For now we recommend using [version 4.13.3](https://github.com/Z3Prover/z3/releases/tag/z3-4.13.3). If you want to get this specific version of Z3 or your packages manager does only have an older version of Z3, the easiest way got a difeerent version is to download the binary from its [GitHub releases](https://github.com/Z3Prover/z3/releases) and *tell Issy to use that* with the ``--caller-z3 <PATH_TO_Z3>`` option.
+To run Issy, you need an SMT solver. By default, Issy uses [Z3](https://github.com/Z3Prover/z3) with **version 4.13.0 or newer**. For now we recommend using [version 4.13.3](https://github.com/Z3Prover/z3/releases/tag/z3-4.13.3). If you want to get this specific version of Z3 or your packages manager does only have an older version of Z3, the easiest way got a difeerent version is to download the binary from its [GitHub releases](https://github.com/Z3Prover/z3/releases) and *tell Issy to use that* with the ``--caller-z3 <PATH_TO_Z3>`` option.
+
+Alternatively, Issy supports [CVC5](https://cvc5.github.io/) as an SMT solver backend. Use ``--solver cvc5`` to switch to CVC5. Note that CVC5 does not support Z3's tactic-based simplification, so some optimizations are skipped when using CVC5.
 
 You also **should** get [Spot](https://spot.lre.epita.fr/) as we Issy needs ``ltl2tgba`` from Spots Omega-automata tool suite. To get it just, follow their installation instructions. Using spot will work by default if ``ltl2tgba`` can be found by Issy in your PATH. If you want a different setup check out the ``--caller-aut <PATH_TO_LTL2TGBA>`` option.
 
@@ -92,7 +94,9 @@ In addition, ``--accel-difficulty LEVELS`` lets you control the "aggressiveness"
 ### External Tools (*NOT FOR CONTAINER USERS*)
 
 Issy uses different external tools, which are needed for different operations. Some of them have to be called via a wrapper script. In all cases, by *default*  Issy assumes the used tool or wrapper script to be in the PATH environment. If this is not desired, you can also set the location to the binary/script to the respective tool manually:
+- ``--solver z3|cvc5`` selects the SMT solver to use. By default, ``z3`` is used.
 - ``--caller-z3 PATH`` sets the path to the Z3 binary. By default, ``z3`` is assumed to be in the PATH.
+- ``--caller-cvc5 PATH`` sets the path to the CVC5 binary. By default, ``cvc5`` is assumed to be in the PATH.
 - ``--caller-aut PATH`` sets the path to Spot's ``ltl2tgba``. By default, ``ltl2tgba`` is assumed to be in the PATH.
 - ``--caller-muval PATH`` sets the path to a script that reads its input on (it's) STDIN and a timeout in seconds as an argument, and calls MuVal on the input with the respective timeout.
 - ``--caller-chcmx  PATH`` sets the path to a script that reads its input on (it's) STDIN and a timeout in seconds as an argument, and calls CHCMax on the input with the respective timeout.

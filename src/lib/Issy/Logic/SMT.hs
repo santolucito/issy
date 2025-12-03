@@ -24,7 +24,7 @@ import Data.Map ((!?))
 import qualified Data.Set as Set
 import System.Exit (die)
 
-import Issy.Config (Config, z3cmd)
+import Issy.Config (Config, Solver(..), solver, z3cmd, cvc5cmd)
 import Issy.Logic.FOL (Model, Sort, Symbol, Term)
 import qualified Issy.Logic.FOL as FOL
 import qualified Issy.Parsers.SMTLib as SMTLib
@@ -53,25 +53,28 @@ trySat conf to f
   | f == FOL.true = pure $ Just True
   | f == FOL.false = pure $ Just False
   | otherwise = do
-    let query = SMTLib.toQuery f ++ satCommand f
-    callz3 conf to query $ \case
+    let query = SMTLib.toQuery f ++ satCommand (solver conf) f
+    callSolver conf to query $ \case
       'u':'n':'s':'a':'t':_ -> Just False
       's':'a':'t':_ -> Just True
       _ -> Nothing
 
 trySatModel :: Config -> Maybe Int -> Term -> IO (Maybe (Maybe Model))
 trySatModel conf to f = do
-  let query = SMTLib.toQuery f ++ satCommand f ++ "(get-model)"
-  callz3 conf to query $ \case
+  let query = SMTLib.toQuery f ++ satCommand (solver conf) f ++ "(get-model)"
+  callSolver conf to query $ \case
     'u':'n':'s':'a':'t':_ -> Just Nothing
     's':'a':'t':xr -> Just $ Just $ SMTLib.extractModel (FOL.decls f) xr
     _ -> Nothing
 
-satCommand :: Term -> String
-satCommand f
-  | FOL.SInt `elem` FOL.sorts f && FOL.SReal `elem` FOL.sorts f && not (FOL.quantifierFree f) =
-    "(check-sat-using (and-then qe default))"
-  | otherwise = "(check-sat)"
+satCommand :: Solver -> Term -> String
+satCommand slv f =
+  case slv of
+    Z3
+      | FOL.SInt `elem` FOL.sorts f && FOL.SReal `elem` FOL.sorts f && not (FOL.quantifierFree f) ->
+        "(check-sat-using (and-then qe default))"
+      | otherwise -> "(check-sat)"
+    CVC5 -> "(check-sat)"
 
 ---------------------------------------------------------------------------------------------------
 -- Simplification
@@ -112,9 +115,10 @@ trySimplify conf to term = do
 simplifyTacs :: Config -> Maybe Int -> [String] -> Term -> IO (Maybe Term)
 simplifyTacs conf to tactics f
   | f == FOL.true || f == FOL.false = pure (Just f)
+  | solver conf == CVC5 = pure (Just f)  -- CVC5 doesn't support Z3's tactic system
   | FOL.ufFree f = do
     let query = SMTLib.toQuery f ++ "(apply " ++ z3TacticList tactics ++ ")"
-    callz3 conf to query $ \res ->
+    callSolver conf to query $ \res ->
       case readTransformZ3 (FOL.bindings f !?) (SMTLib.tokenize res) of
         Right res -> Just res
         _ -> Nothing
@@ -126,9 +130,10 @@ simplifyUF conf = noTimeout . trySimplifyUF conf Nothing
 trySimplifyUF :: Config -> Maybe Int -> Term -> IO (Maybe Term)
 trySimplifyUF conf to f
   | f == FOL.true || f == FOL.false = pure (Just f)
+  | solver conf == CVC5 = pure (Just f)  -- CVC5 doesn't support Z3's tactic system
   | otherwise = do
     let query = SMTLib.toQuery f ++ "(apply " ++ z3TacticList z3SimplifyUF ++ ")"
-    callz3 conf to query $ \res ->
+    callSolver conf to query $ \res ->
       case readTransformZ3 (FOL.bindings f !?) (SMTLib.tokenize res) of
         Right res -> Just res
         _ -> Nothing
@@ -175,7 +180,7 @@ tryOptPareto conf to f maxTerms = do
                  ++ SMTLib.toQuery f
                  ++ maxQueries
                  ++ "(check-sat)(get-model)"
-          in callz3 conf to query $ \case
+          in callSolver conf to query $ \case
                'u':'n':'s':'a':'t':_ -> Just Nothing
                's':'a':'t':xr -> Just $ Just $ SMTLib.extractModel (FOL.frees f) xr
                _ -> Nothing
@@ -183,14 +188,17 @@ tryOptPareto conf to f maxTerms = do
 ---------------------------------------------------------------------------------------------------
 -- Helper and common routines
 ---------------------------------------------------------------------------------------------------
-callz3 :: Config -> Maybe Int -> String -> (String -> Maybe a) -> IO (Maybe a)
-callz3 conf to query parse = do
-  lgv conf ["z3 query:", query]
-  res <- runTO to (z3cmd conf) ["-smt2", "-in"] query
+callSolver :: Config -> Maybe Int -> String -> (String -> Maybe a) -> IO (Maybe a)
+callSolver conf to query parse = do
+  let (cmd, args, solverName) = case solver conf of
+        Z3   -> (z3cmd conf, ["-smt2", "-in"], "z3")
+        CVC5 -> (cvc5cmd conf, ["--lang=smt2", "--produce-models"], "cvc5")
+  lgv conf [solverName ++ " query:", query]
+  res <- runTO to cmd args query
   case res of
     Nothing -> pure Nothing
     Just res ->
       case parse res of
         Just res -> pure (Just res)
-        _ -> die $ "z3 returned unexpected: \"" ++ res ++ "\" on \"" ++ query ++ "\""
+        _ -> die $ solverName ++ " returned unexpected: \"" ++ res ++ "\" on \"" ++ query ++ "\""
 ---------------------------------------------------------------------------------------------------

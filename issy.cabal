@@ -23,23 +23,24 @@ library
 
   exposed-modules:
       Compiler
+    , Compiler.Base
+    , Compiler.Lexer
     , Issy
+    , Issy.Base.Variables
+    , Issy.Config
+    , Issy.Logic.FOL
+    , Issy.Specification
 
   other-modules:
-      Compiler.Base
-    , Compiler.Checker
-    , Compiler.Lexer
+      Compiler.Checker
     , Compiler.Parser
     , Compiler.Writer
     , Issy.Base.Locations
     , Issy.Base.Objectives
     , Issy.Base.SymbolicState
-    , Issy.Base.Variables
-    , Issy.Config
     , Issy.Extractors.MuCLP
     , Issy.Extractors.TSLT
     , Issy.Logic.CHC
-    , Issy.Logic.FOL
     , Issy.Logic.RPLTL
     , Issy.Logic.SMT
     , Issy.Logic.Temporal
@@ -79,7 +80,6 @@ library
     , Issy.Solver.GameInterface
     , Issy.Solver.ObjectiveSolver
     , Issy.Solver.Synthesis
-    , Issy.Specification
     , Issy.Statistics
     , Issy.SymbolicArena
     , Issy.Translation
@@ -113,6 +113,44 @@ executable issy
 
   hs-source-dirs:
     src/issy
+
+  default-language:
+    Haskell2010
+
+test-suite issy-test
+
+  type:
+    exitcode-stdio-1.0
+
+  ghc-options:
+    -Wall
+    -Wno-name-shadowing
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+
+  main-is:
+    Main.hs
+
+  other-modules:
+      Test.Integration.CompileSpec
+    , Test.Integration.ParsePrintSpec
+    , Test.Integration.SolveSpec
+    , Test.Unit.Compiler.LexerSpec
+    , Test.Unit.Logic.FOLSpec
+    , Test.Unit.Parsers.LLIssyFormatSpec
+    , Test.TestUtils
+
+  build-depends:
+      base
+    , issy
+    , tasty
+    , tasty-hunit
+    , containers
+    , process
+
+  hs-source-dirs:
+    test
 
   default-language:
     Haskell2010
